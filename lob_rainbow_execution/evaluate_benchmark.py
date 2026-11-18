@@ -169,8 +169,8 @@ def plot_benchmark_distributions(
 def run_paired_benchmark(
     num_seeds: int = 1_000,
     start_seed: int = 10_000,
-    dqn_model_path: str | None = None,
-    c51_model_path: str | None = None,
+    dqn_model_path: str | None = "checkpoints/dqn_baseline.pt",
+    c51_model_path: str | None = "checkpoints/rainbow_c51.pt",
     train_if_missing: bool = True,
     output_plot_path: str = "benchmark_distributions.png",
 ) -> tuple[dict[str, dict[str, Any]], str]:
@@ -187,10 +187,13 @@ def run_paired_benchmark(
     # 2. Standard Double Dueling DQN Policy
     dqn_agent = DoubleDQNAgent(env)
     if dqn_model_path and os.path.exists(dqn_model_path):
-        dqn_agent.online_net.load_state_dict(torch.load(dqn_model_path, map_location="cpu", weights_only=True))
+        print(f"Loading Double DQN weights from {dqn_model_path}...")
+        dqn_agent.load(dqn_model_path)
     elif train_if_missing:
         print("Training Standard Double DQN baseline (fast demo run)...")
         dqn_agent.train(total_episodes=300, warmup_episodes=30, epsilon_decay_episodes=200)
+        if dqn_model_path:
+            dqn_agent.save(dqn_model_path)
 
     dqn_agent.online_net.eval()
     dqn_selector = lambda obs: dqn_agent.online_net.get_action(torch.as_tensor(obs, dtype=torch.float32))
@@ -199,10 +202,13 @@ def run_paired_benchmark(
     # 3 & 4. C51 Rainbow Policies (Expected Value & CVaR_0.25)
     c51_agent = RainbowC51Agent(env)
     if c51_model_path and os.path.exists(c51_model_path):
-        c51_agent.online_net.load_state_dict(torch.load(c51_model_path, map_location="cpu", weights_only=True))
+        print(f"Loading Rainbow C51 weights from {c51_model_path}...")
+        c51_agent.load(c51_model_path)
     elif train_if_missing:
         print("Training Distributional Rainbow C51 agent (fast demo run)...")
         c51_agent.train(total_episodes=300, warmup_episodes=30, epsilon_decay_episodes=200)
+        if c51_model_path:
+            c51_agent.save(c51_model_path)
 
     c51_agent.online_net.eval()
     c51_expected_selector = lambda obs: c51_agent.online_net.get_action(
@@ -232,8 +238,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate LOB execution policies on paired seeds.")
     parser.add_argument("--num_seeds", type=int, default=1000, help="Number of paired OOS seeds (default: 1000)")
     parser.add_argument("--start_seed", type=int, default=10000, help="Initial seed (default: 10000)")
-    parser.add_argument("--dqn_path", type=str, default=None, help="Path to trained Double DQN checkpoint")
-    parser.add_argument("--c51_path", type=str, default=None, help="Path to trained C51 checkpoint")
+    parser.add_argument("--dqn_path", type=str, default="checkpoints/dqn_baseline.pt", help="Path to trained Double DQN checkpoint")
+    parser.add_argument("--c51_path", type=str, default="checkpoints/rainbow_c51.pt", help="Path to trained C51 checkpoint")
     parser.add_argument("--plot_path", type=str, default="benchmark_distributions.png", help="Path for output plot")
     args = parser.parse_args()
 

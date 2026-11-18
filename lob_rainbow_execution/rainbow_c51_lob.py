@@ -524,3 +524,37 @@ class RainbowC51Agent:
             episode_rewards.append(total_r)
 
         return episode_rewards
+
+    def save(self, path: str) -> None:
+        """Saves online network weights to disk."""
+        import os
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        torch.save(self.online_net.state_dict(), path)
+        print(f"Saved Rainbow C51 weights to {path}")
+
+    def load(self, path: str) -> None:
+        """Loads weights into online and target networks."""
+        self.online_net.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
+        self.target_net.load_state_dict(self.online_net.state_dict())
+        self.target_net.eval()
+        print(f"Loaded Rainbow C51 weights from {path}")
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Train Distributional Rainbow C51 Agent on LOB execution.")
+    parser.add_argument("--episodes", type=int, default=2000, help="Total training episodes")
+    parser.add_argument("--warmup", type=int, default=100, help="Warmup random exploration episodes")
+    parser.add_argument("--save_path", type=str, default="checkpoints/rainbow_c51.pt", help="Path to save weights")
+    args = parser.parse_args()
+
+    env = LOBExecutionEnv()
+    agent = RainbowC51Agent(env)
+    print(f"Training Rainbow C51 agent for {args.episodes} episodes...")
+    agent.train(
+        total_episodes=args.episodes,
+        warmup_episodes=args.warmup,
+        epsilon_decay_episodes=int(args.episodes * 0.75),
+    )
+    agent.save(args.save_path)
+
