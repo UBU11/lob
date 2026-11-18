@@ -1,9 +1,18 @@
 [project]
 name = "lob"
 version = "0.1.0"
-description = "Add your description here"
+description = "Optimal Trade Execution in a Limit Order Book via Distributional Rainbow DQN"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
-    "numpy>=2.5.5",
+    "gymnasium>=1.4.0",
+    "numpy>=2.5.0",
+    "torch>=2.15.0",
+    "matplotlib>=3.10.0",
+    "scipy>=1.15.0",
+    "pytest>=8.0.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["lob_rainbow_execution/tests", "tests"]
