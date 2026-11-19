@@ -1,8 +1,6 @@
-"""
-Single-File Double + Dueling Scalar DQN Baseline for Limit Order Book Execution.
-Target Standard: November 2026 Quantitative RL & Market Microstructure Engineering.
-CleanRL Architectural Philosophy: Self-contained, transparent, readable top-to-bottom.
-"""
+# Single-File Double + Dueling Scalar DQN Baseline for Limit Order Book Execution.
+
+
 
 from typing import Any
 import numpy as np
@@ -13,14 +11,7 @@ import torch.nn.functional as F
 from lob_rainbow_execution.env_lob import LOBExecutionEnv
 
 
-# ==============================================================================
-# 1. Standard Experience Replay Buffer
-# ==============================================================================
-
 class ReplayBuffer:
-    """
-    Circular array-backed Experience Replay Buffer for scalar DQN.
-    """
 
     def __init__(self, capacity: int = 100_000, state_dim: int = 6) -> None:
         self.capacity = int(capacity)
@@ -66,15 +57,9 @@ class ReplayBuffer:
         return states_t, actions_t, rewards_t, next_states_t, dones_t
 
 
-# ==============================================================================
-# 2. Dueling Scalar DQN Network Architecture
-# ==============================================================================
-
 class DuelingDQNNetwork(nn.Module):
-    """
-    Dueling DQN Network with shared torso, state-value stream V(s), and advantage stream A(s, a).
-    Q(s, a) = V(s) + (A(s, a) - 1/|A| sum_a' A(s, a'))
-    """
+    # Q(s, a) = V(s) + (A(s, a) - 1/|A| sum_a' A(s, a'))
+
 
     def __init__(self, state_dim: int = 6, action_dim: int = 5) -> None:
         super().__init__()
@@ -109,7 +94,6 @@ class DuelingDQNNetwork(nn.Module):
         value = self.value_stream(features)  # [B, 1]
         advantage = self.advantage_stream(features)  # [B, action_dim]
 
-        # Dueling fusion
         q_values = value + (advantage - advantage.mean(dim=-1, keepdim=True))
         return q_values
 
@@ -122,10 +106,6 @@ class DuelingDQNNetwork(nn.Module):
             return int(torch.argmax(q_values, dim=-1).item())
 
 
-# ==============================================================================
-# 3. Double DQN Loss & Agent Training Loop
-# ==============================================================================
-
 def compute_double_dqn_loss(
     online_net: DuelingDQNNetwork,
     target_net: DuelingDQNNetwork,
@@ -136,28 +116,19 @@ def compute_double_dqn_loss(
     dones: torch.Tensor,
     gamma: float = 0.995,
 ) -> torch.Tensor:
-    """
-    Computes Double DQN Bellman loss:
-    a* = argmax_a' Q_online(s', a')
-    y = r + (1 - d) * gamma * Q_target(s', a*)
-    loss = SmoothL1(Q_online(s, a), y)
-    """
+
     batch_size = states.size(0)
 
-    # Current Q-values for taken actions
     current_q_all = online_net(states)
     current_q = current_q_all[torch.arange(batch_size, device=states.device), actions]
 
     with torch.no_grad():
-        # Action selection from online network
         next_q_online = online_net(next_states)
         next_actions = torch.argmax(next_q_online, dim=-1)
 
-        # Action evaluation from target network
         next_q_target = target_net(next_states)
         next_q_val = next_q_target[torch.arange(batch_size, device=states.device), next_actions]
 
-        # Target Bellman value
         target_q = rewards + (1.0 - dones) * gamma * next_q_val
 
     loss = F.smooth_l1_loss(current_q, target_q)
@@ -165,9 +136,7 @@ def compute_double_dqn_loss(
 
 
 class DoubleDQNAgent:
-    """
-    Self-contained Double + Dueling scalar DQN baseline agent.
-    """
+
 
     def __init__(
         self,
@@ -276,14 +245,12 @@ class DoubleDQNAgent:
         return episode_rewards
 
     def save(self, path: str) -> None:
-        """Saves online network weights to disk."""
         import os
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         torch.save(self.online_net.state_dict(), path)
         print(f"Saved Double DQN weights to {path}")
 
     def load(self, path: str) -> None:
-        """Loads weights into online and target networks."""
         self.online_net.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
         self.target_net.load_state_dict(self.online_net.state_dict())
         self.target_net.eval()

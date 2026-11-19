@@ -28,11 +28,7 @@ def evaluate_policy_on_seeds(
     action_selector: Callable[[np.ndarray], int],
     seeds: list[int],
 ) -> dict[str, Any]:
-    """
-    Evaluates an action selector policy over exact paired seeds.
-    Calculates Implementation Shortfall (IS in basis points):
-    IS_bps = ((Total Cash Earned - Q0 * P0) / (Q0 * P0)) * 1e4
-    """
+
     is_bps_list = []
     levels_walked_list = []
 
@@ -60,7 +56,6 @@ def evaluate_policy_on_seeds(
     std_is = float(np.std(is_arr, ddof=1)) if n_episodes > 1 else 0.0
     sharpe = float(mean_is / (std_is + 1e-8))
 
-    # 95% CVaR: average of the worst 5% (50 out of 1000) execution episodes
     k_worst = max(1, int(np.ceil(0.05 * n_episodes)))
     sorted_is = np.sort(is_arr)
     cvar_95 = float(np.mean(sorted_is[:k_worst]))
@@ -76,9 +71,6 @@ def evaluate_policy_on_seeds(
 
 
 def format_markdown_table(results: dict[str, dict[str, Any]]) -> str:
-    """
-    Formats institutional benchmark evaluation table in Markdown.
-    """
     header = (
         "| Policy Architecture | Mean IS (bps) | IS Std Dev (bps) | Execution Sharpe | 95% CVaR (Tail Risk bps) |\n"
         "| :--- | :--- | :--- | :--- | :--- |"
@@ -103,15 +95,9 @@ def plot_benchmark_distributions(
     c51_net: DuelingC51Network | None = None,
     output_path: str = "benchmark_distributions.png",
 ) -> None:
-    """
-    Generates comparative benchmark figure with:
-    1. Overlaid Kernel Density Estimation (KDE) / Histograms of episodic Implementation Shortfall.
-    2. 51-atom categorical probability mass functions Z(s, a) under High vs. Low Order Book Imbalance (OBI).
-    """
     plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
-    # --- Subplot 1: Episodic IS Distributions ---
     ax1 = axes[0]
     colors = {
         "TWAP Baseline": "#7f7f7f",
@@ -135,7 +121,6 @@ def plot_benchmark_distributions(
     ax1.legend(loc="upper left", frameon=True)
     ax1.axvline(0, color="black", linestyle="--", alpha=0.5, label="Arrival Price P0")
 
-    # --- Subplot 2: 51-Atom C51 Distribution Under High vs. Low OBI ---
     ax2 = axes[1]
     if c51_net is None:
         c51_net = DuelingC51Network()
@@ -144,11 +129,9 @@ def plot_benchmark_distributions(
     support = c51_net.support.cpu().numpy()
 
     with torch.no_grad():
-        # High OBI state (strong bid support: OBI = +0.8)
         s_high_obi = torch.tensor([[0.5, 0.5, 2.0, 0.8, 1.0, 0.0]], dtype=torch.float32)
-        probs_high = c51_net(s_high_obi)[0, 2].cpu().numpy()  # action 2: 1.0 TWAP slice
+        probs_high = c51_net(s_high_obi)[0, 2].cpu().numpy()
 
-        # Low OBI state (depleted bid support: OBI = -0.8)
         s_low_obi = torch.tensor([[0.5, 0.5, 2.0, -0.8, 1.0, 0.0]], dtype=torch.float32)
         probs_low = c51_net(s_low_obi)[0, 2].cpu().numpy()
 

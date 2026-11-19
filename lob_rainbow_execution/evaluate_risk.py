@@ -1,7 +1,3 @@
-"""
-Paired-Path Evaluation: IS (bps), Sharpe, and 95% CVaR metrics.
-Aliases and re-exports functionality from evaluate_benchmark.py for compatibility.
-"""
 
 from lob_rainbow_execution.evaluate_benchmark import (
     evaluate_policy_on_seeds,

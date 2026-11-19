@@ -1,9 +1,3 @@
-"""
-Single-File Pure PyTorch C51 + Dueling + Double + PER Agent for Limit Order Book Execution.
-Target Standard: November 2026 Quantitative RL & Market Microstructure Engineering.
-CleanRL Architectural Philosophy: Self-contained, transparent, readable top-to-bottom.
-"""
-
 from typing import Any
 import numpy as np
 import torch
@@ -13,16 +7,7 @@ import torch.nn.functional as F
 from lob_rainbow_execution.env_lob import LOBExecutionEnv
 
 
-# ==============================================================================
-# 1. Prioritized Experience Replay (PER) SumTree
-# ==============================================================================
-
 class SumTree:
-    """
-    Array-backed binary SumTree with O(log N) updates and prefix-sum sampling.
-    Tree structure has 2 * capacity - 1 nodes.
-    Leaf nodes at indices [capacity - 1, 2 * capacity - 2] store transition priorities.
-    """
 
     def __init__(self, capacity: int) -> None:
         self.capacity = int(capacity)
@@ -31,11 +16,9 @@ class SumTree:
         self.size = 0
 
     def total(self) -> float:
-        """Returns the root value, which equals the total sum of all leaf priorities."""
         return float(self.tree[0])
 
     def add(self, priority: float) -> int:
-        """Inserts priority for new transition and returns the data index [0, capacity - 1]."""
         data_idx = self.data_pointer
         tree_idx = data_idx + self.capacity - 1
         self.update(tree_idx, priority)
@@ -46,7 +29,6 @@ class SumTree:
         return data_idx
 
     def update(self, tree_idx: int, priority: float) -> None:
-        """Updates the priority of a leaf node and propagates the delta upward to root."""
         change = float(priority) - self.tree[tree_idx]
         self.tree[tree_idx] = float(priority)
         while tree_idx != 0:
@@ -54,10 +36,6 @@ class SumTree:
             self.tree[tree_idx] += change
 
     def get(self, value: float) -> tuple[int, float, int]:
-        """
-        Samples a leaf node whose prefix sum interval contains `value`.
-        Returns: (tree_idx, priority, data_idx)
-        """
         parent_idx = 0
         while True:
             left_child = 2 * parent_idx + 1
@@ -78,11 +56,6 @@ class SumTree:
 
 
 class PrioritizedReplayBuffer:
-    """
-    Prioritized Experience Replay buffer backed by SumTree.
-    Alpha controls priority exponent, Beta controls Importance Sampling exponent.
-    """
-
     def __init__(
         self,
         capacity: int = 100_000,
@@ -119,7 +92,6 @@ class PrioritizedReplayBuffer:
         next_state: np.ndarray,
         done: bool,
     ) -> None:
-        """Stores a transition with initial priority set to current max_priority."""
         priority = (self.max_priority + 1e-5) ** self.alpha
         data_idx = self.tree.add(priority)
 
@@ -130,10 +102,7 @@ class PrioritizedReplayBuffer:
         self.dones[data_idx] = done
 
     def sample(self, batch_size: int) -> tuple[torch.Tensor, ...]:
-        """
-        Samples a batch of transitions proportionally to priorities.
-        Returns: (states, actions, rewards, next_states, dones, weights, tree_indices)
-        """
+
         self.frame += 1
         beta = min(
             self.beta_end,
@@ -171,7 +140,6 @@ class PrioritizedReplayBuffer:
         return states_t, actions_t, rewards_t, next_states_t, dones_t, weights_t, tree_indices
 
     def update_priorities(self, tree_indices: list[int], td_errors: np.ndarray | torch.Tensor) -> None:
-        """Updates priorities in SumTree using sample-wise errors / cross-entropy losses."""
         if isinstance(td_errors, torch.Tensor):
             td_errors = td_errors.detach().cpu().numpy()
 
@@ -181,15 +149,7 @@ class PrioritizedReplayBuffer:
             self.max_priority = max(self.max_priority, float(np.abs(td_error)))
 
 
-# ==============================================================================
-# 2. Dueling Categorical (C51) Architecture
-# ==============================================================================
-
 class DuelingC51Network(nn.Module):
-    """
-    Distributional Dueling C51 Network with 51 linearly spaced support atoms.
-    Combines Value stream and Advantage stream in logit space prior to softmax.
-    """
 
     def __init__(
         self,
@@ -234,26 +194,20 @@ class DuelingC51Network(nn.Module):
         )
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass returning probability mass function p(s, a, z_i) of shape [B, A, 51].
-        Guaranteed to strictly lie on the probability simplex: sum over atoms == 1.0.
-        """
+
         features = self.torso(state)
         batch_size = state.size(0)
 
         value_logits = self.value_stream(features).view(batch_size, 1, self.n_atoms)
         adv_logits = self.advantage_stream(features).view(batch_size, self.action_dim, self.n_atoms)
 
-        # Dueling fusion in logit space: Q_logits = V + (A - mean(A))
         q_logits = value_logits + (adv_logits - adv_logits.mean(dim=1, keepdim=True))
 
         probs = F.softmax(q_logits, dim=-1)
         return probs
 
     def get_q_values(self, state: torch.Tensor) -> torch.Tensor:
-        """
-        Computes expected Q-values E[Z] = sum_i z_i * p(s, a, z_i) of shape [B, A].
-        """
+
         probs = self.forward(state)
         q_values = torch.sum(probs * self.support.view(1, 1, -1), dim=-1)
         return q_values
@@ -264,11 +218,6 @@ class DuelingC51Network(nn.Module):
         mode: str = "expected",
         alpha: float = 0.25,
     ) -> int:
-        """
-        Selects greedy action under:
-            1. 'expected': argmax_a E[Z(s, a)]
-            2. 'cvar': argmax_a CVaR_alpha[Z(s, a)] (worst alpha-quantile expectation)
-        """
         if state.dim() == 1:
             state = state.unsqueeze(0)
 
@@ -280,7 +229,6 @@ class DuelingC51Network(nn.Module):
                 probs = self.forward(state)  # [1, action_dim, n_atoms]
                 cdf = torch.cumsum(probs, dim=-1)
 
-                # Tail mask: atoms where CDF <= alpha, always retaining atom 0
                 tail_mask = (cdf <= alpha).float()
                 tail_mask[..., 0] = 1.0
 
@@ -292,10 +240,6 @@ class DuelingC51Network(nn.Module):
                 raise ValueError(f"Unknown mode: {mode}. Must be 'expected' or 'cvar'.")
 
 
-# ==============================================================================
-# 3. Categorical Bellman Projection & Loss Function
-# ==============================================================================
-
 def project_bellman_distribution(
     online_net: DuelingC51Network,
     target_net: DuelingC51Network,
@@ -304,10 +248,7 @@ def project_bellman_distribution(
     dones: torch.Tensor,
     gamma: float = 0.995,
 ) -> torch.Tensor:
-    """
-    Computes projected target categorical distribution Phi T Z using Double DQN action selection.
-    Ensures probability mass conservation: sum(proj_dist, dim=-1) == 1.0 identically.
-    """
+
     batch_size = next_states.size(0)
     n_atoms = online_net.n_atoms
     v_min = online_net.v_min
@@ -316,25 +257,19 @@ def project_bellman_distribution(
     support = online_net.support
 
     with torch.no_grad():
-        # Double DQN: next action selected by ONLINE network expected Q-values
         next_q_values = online_net.get_q_values(next_states)
         next_actions = torch.argmax(next_q_values, dim=-1)
 
-        # Target network evaluates distribution of selected action
         next_probs = target_net(next_states)
         next_best_probs = next_probs[torch.arange(batch_size, device=next_states.device), next_actions]
 
-        # Shifted support: T z_j = clip(r + (1 - d) * gamma * z_j, v_min, v_max)
         t_z = rewards.unsqueeze(1) + (1.0 - dones.unsqueeze(1)) * gamma * support.unsqueeze(0)
         t_z = torch.clamp(t_z, min=v_min, max=v_max)
 
-        # Support coordinate: b_j in [0, n_atoms - 1]
         b = (t_z - v_min) / delta_z
         l = torch.floor(b).long().clamp(0, n_atoms - 1)
         u = torch.ceil(b).long().clamp(0, n_atoms - 1)
 
-        # Exact hit / boundary condition handling:
-        # When l == u, (u - b) and (b - l) are both 0. In this case, allocate 100% mass to l.
         eq_mask = (l == u).float()
         l_weight = (u.float() - b) + eq_mask
         u_weight = (b - l.float())
@@ -371,9 +306,7 @@ def compute_c51_loss(
     weights: torch.Tensor,
     gamma: float = 0.995,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Computes sample-wise cross-entropy loss and importance-weighted loss for C51.
-    """
+
     batch_size = states.size(0)
     proj_dist = project_bellman_distribution(
         online_net=online_net,
@@ -394,14 +327,7 @@ def compute_c51_loss(
     return weighted_loss, sample_losses
 
 
-# ==============================================================================
-# 4. Self-Contained Agent Training Loop
-# ==============================================================================
-
 class RainbowC51Agent:
-    """
-    Self-contained Distributional Rainbow DQN agent for institutional LOB execution.
-    """
 
     def __init__(
         self,
@@ -447,7 +373,6 @@ class RainbowC51Agent:
         )
 
     def soft_update_target(self) -> None:
-        """Polyak soft update: theta^- <- tau * theta + (1 - tau) * theta^-"""
         for param, target_param in zip(self.online_net.parameters(), self.target_net.parameters()):
             target_param.data.copy_(self.tau * param.data + (1.0 - self.tau) * target_param.data)
 
@@ -526,14 +451,12 @@ class RainbowC51Agent:
         return episode_rewards
 
     def save(self, path: str) -> None:
-        """Saves online network weights to disk."""
         import os
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         torch.save(self.online_net.state_dict(), path)
         print(f"Saved Rainbow C51 weights to {path}")
 
     def load(self, path: str) -> None:
-        """Loads weights into online and target networks."""
         self.online_net.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
         self.target_net.load_state_dict(self.online_net.state_dict())
         self.target_net.eval()

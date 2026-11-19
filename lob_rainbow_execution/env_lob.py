@@ -1,9 +1,3 @@
-"""
-Limit Order Book (LOB) Execution Environment (Gymnasium 1.4.0+ compliant)
-Follows 2026 quantitative RL and market microstructure standards.
-CleanRL single-file architecture: self-contained and transparent.
-"""
-
 from typing import Any
 import gymnasium as gym
 from gymnasium import spaces
@@ -11,22 +5,6 @@ import numpy as np
 
 
 class LOBExecutionEnv(gym.Env):
-    """
-    Optimal Parent Order Liquidation Environment in a Limit Order Book.
-
-    State s_t in R^6 (dimensionless, stationary):
-        1. time_rem: (T - t) / T in [0, 1]
-        2. inv_rem: q_t / Q0 in [0, 1]
-        3. spread_ticks: (P_ask,1 - P_bid,1) / tick_size
-        4. obi: Order Book Imbalance across D levels in [-1, 1]
-        5. l1_depth_ratio: V_bid,1 / (Q0 / T)
-        6. mid_drift_bps: ((P_mid,t - P_mid,t-1) / P0) * 1e4
-
-    Action Space Discrete(5):
-        Multipliers M = [0.0, 0.5, 1.0, 1.5, 2.0] relative to TWAP slice x_twap = Q0 / T.
-        At t = T, terminal constraint overrides action to liquidate all remaining inventory.
-    """
-
     metadata = {"render_modes": []}
 
     def __init__(
@@ -52,8 +30,6 @@ class LOBExecutionEnv(gym.Env):
 
         self.action_multipliers = np.array([0.0, 0.5, 1.0, 1.5, 2.0], dtype=np.float32)
         self.action_space = spaces.Discrete(len(self.action_multipliers))
-
-        # Stationary bounded observation space to comply with Gymnasium 1.4.0 check_env without warnings
         low_obs = np.array([0.0, 0.0, 0.0, -1.0, 0.0, -10_000.0], dtype=np.float32)
         high_obs = np.array([1.0, 1.0, 1000.0, 1.0, 1000.0, 10_000.0], dtype=np.float32)
         self.observation_space = spaces.Box(
@@ -63,7 +39,6 @@ class LOBExecutionEnv(gym.Env):
             dtype=np.float32,
         )
 
-        # Internal state placeholders
         self.t: int = 0
         self.q_t: float = self.Q0
         self.mid_price: float = self.arrival_price
@@ -108,7 +83,6 @@ class LOBExecutionEnv(gym.Env):
         target_bid_vols = self.np_random.gamma(shape=2.0, scale=250.0, size=self.num_levels).astype(np.float32)
         target_ask_vols = self.np_random.gamma(shape=2.0, scale=250.0, size=self.num_levels).astype(np.float32)
 
-        # 60% exponential depth replenishment toward stochastic target depth
         self.bid_vols = np.maximum(50.0, 0.4 * self.bid_vols + 0.6 * target_bid_vols).astype(np.float32)
         self.ask_vols = np.maximum(50.0, 0.4 * self.ask_vols + 0.6 * target_ask_vols).astype(np.float32)
 
@@ -170,7 +144,6 @@ class LOBExecutionEnv(gym.Env):
             if rem <= 1e-5:
                 break
 
-        # Overflow filled beyond visible depth at penalty price
         if rem > 1e-5:
             deep_price = float(self.bid_prices[-1] - 3.0 * self.tick_size)
             total_cash += rem * deep_price
@@ -188,7 +161,6 @@ class LOBExecutionEnv(gym.Env):
 
         action_int = int(action)
         if is_terminal:
-            # Mandatory terminal liquidation constraint: override action to liquidate all remaining inventory
             shares_to_sell = float(self.q_t)
         else:
             desired_shares = float(self.action_multipliers[action_int] * self.twap_slice)
@@ -197,7 +169,7 @@ class LOBExecutionEnv(gym.Env):
         cash_earned, levels_walked = self._execute_sell_order(shares_to_sell)
         self.q_t = float(max(0.0, self.q_t - shares_to_sell))
         if is_terminal:
-            self.q_t = 0.0  # Guarantee exact zero inventory conservation
+            self.q_t = 0.0 
 
         self.total_shares_sold += shares_to_sell
         self.total_cash_earned += cash_earned
@@ -216,7 +188,6 @@ class LOBExecutionEnv(gym.Env):
         )
         reward = float(shortfall_bps - walk_penalty - terminal_dump_penalty)
 
-        # Permanent/temporary impact on LOB
         impact = 0.03 * (shares_to_sell / (self.twap_slice + 1e-8))
         self._generate_lob_step(temporary_impact=impact)
 
@@ -237,10 +208,6 @@ class LOBExecutionEnv(gym.Env):
 
 
 class TWAPPolicy:
-    """
-    Deterministic Time-Weighted Average Price (TWAP) Baseline Policy.
-    Always selects action multiplier 1.0 (action index 2) to liquidate Q0 / T per step.
-    """
 
     def __init__(self, action_idx: int = 2) -> None:
         self.action_idx = action_idx
@@ -266,7 +233,6 @@ class TWAPPolicy:
                 done = terminated or truncated
                 ep_cash += step_info["cash_earned"]
 
-            # Implementation Shortfall in basis points: ((Total Cash - Q0 * P0) / (Q0 * P0)) * 1e4
             is_bps = ((ep_cash - env.Q0 * env.arrival_price) / (env.Q0 * env.arrival_price)) * 1e4
             shortfalls.append(is_bps)
 
