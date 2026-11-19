@@ -1,8 +1,3 @@
-"""
-Optimal Trade Execution in a Limit Order Book (Distributional Rainbow DQN).
-Root entrypoint to run invariant verification, TWAP baseline calibration, and benchmark evaluation.
-"""
-
 import sys
 from lob_rainbow_execution.env_lob import LOBExecutionEnv, TWAPPolicy
 from lob_rainbow_execution.evaluate_benchmark import run_paired_benchmark
@@ -26,7 +21,7 @@ def main() -> None:
     # 2. Run paired out-of-sample benchmark
     print("\n[Phase 2] Running Paired Out-of-Sample Benchmark across 4 Policies...")
     results, md_table = run_paired_benchmark(
-        num_seeds=100,  # fast demonstration run on paired seeds
+        num_seeds=100,  
         start_seed=10_000,
         train_if_missing=True,
         output_plot_path="benchmark_distributions.png",
