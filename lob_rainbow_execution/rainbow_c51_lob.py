@@ -268,6 +268,7 @@ def project_bellman_distribution(
         next_probs = target_net(next_states)
         next_best_probs = next_probs[torch.arange(batch_size, device=next_states.device), next_actions]
 
+        # Clamp shifted Bellman return support to [v_min, v_max] interval
         t_z = rewards.unsqueeze(1) + (1.0 - dones.unsqueeze(1)) * gamma * support.unsqueeze(0)
         t_z = torch.clamp(t_z, min=v_min, max=v_max)
 
