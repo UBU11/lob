@@ -89,7 +89,7 @@ def evaluate_policy_on_seeds(
 def format_markdown_table(results: dict[str, dict[str, Any]]) -> str:
     header = (
         "| Policy Architecture | Mean IS (bps) | IS Std Dev (bps) | Execution Sharpe | 95% CVaR (Tail Risk bps) |\n"
-        "| :--- | :--- | :--- | :--- | :--- |"
+        "| :-------------------------- | -------------: | ----------------: | ---------------: | -----------------------: |"
     )
     rows = []
     for name, m in results.items():
