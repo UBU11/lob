@@ -58,6 +58,11 @@ class ReplayBuffer:
 
 
 class DuelingDQNNetwork(nn.Module):
+    """
+    Dueling Q-Network baseline architecture separating state-value V(s)
+    and advantage A(s, a) streams to estimate scalar expected action values.
+    """
+
     # Q(s, a) = V(s) + (A(s, a) - 1/|A| sum_a' A(s, a'))
 
 
