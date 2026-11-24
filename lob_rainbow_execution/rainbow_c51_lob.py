@@ -150,6 +150,11 @@ class PrioritizedReplayBuffer:
 
 
 class DuelingC51Network(nn.Module):
+    """
+    Categorical Dueling Q-Network estimating discrete probability distributions
+    over 51 return atoms for each action. Separates scalar value logits V(s)
+    and advantage logits A(s, a) to produce normalised categorical distributions.
+    """
 
     def __init__(
         self,
