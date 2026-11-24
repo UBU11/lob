@@ -8,6 +8,10 @@ from lob_rainbow_execution.env_lob import LOBExecutionEnv
 
 
 class SumTree:
+    """
+    Binary SumTree data structure for O(log N) priority sampling and updates.
+    Internal nodes store cumulative sums of children; leaf nodes hold transition priorities.
+    """
 
     def __init__(self, capacity: int) -> None:
         self.capacity = int(capacity)
