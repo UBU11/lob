@@ -103,6 +103,7 @@ class LOBExecutionEnv(gym.Env):
         target_bid_vols = self.np_random.gamma(shape=2.0, scale=250.0, size=self.num_levels).astype(np.float32)
         target_ask_vols = self.np_random.gamma(shape=2.0, scale=250.0, size=self.num_levels).astype(np.float32)
 
+        # Exponential queue depth replenishment (mean-reversion rate kappa = 0.60)
         self.bid_vols = np.maximum(50.0, 0.4 * self.bid_vols + 0.6 * target_bid_vols).astype(np.float32)
         self.ask_vols = np.maximum(50.0, 0.4 * self.ask_vols + 0.6 * target_ask_vols).astype(np.float32)
 
