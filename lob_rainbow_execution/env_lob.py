@@ -5,6 +5,13 @@ import numpy as np
 
 
 class LOBExecutionEnv(gym.Env):
+    """
+    Limit Order Book (LOB) Execution Environment conforming to Gymnasium standards.
+
+    Simulates the liquidation of a large institutional parent order Q0 over a discrete
+    time horizon T into a 5-level limit order book with transient resilience,
+    slippage, permanent price impact, and book walking mechanics.
+    """
     metadata = {"render_modes": []}
 
     def __init__(
