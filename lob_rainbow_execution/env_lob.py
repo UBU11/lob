@@ -63,6 +63,16 @@ class LOBExecutionEnv(gym.Env):
         if seed is not None:
             self.reset(seed=seed)
 
+    def validate_invariants(self) -> bool:
+        """Verify runtime state variables remain within valid physical bounds."""
+        if not (0.0 <= self.q_t <= self.Q0 + 1e-4):
+            return False
+        if not (0 <= self.t <= self.T):
+            return False
+        if self.mid_price <= 0.0:
+            return False
+        return True
+
     def _compute_obi(self) -> float:
         bid_sum = float(np.sum(self.bid_vols))
         ask_sum = float(np.sum(self.ask_vols))
