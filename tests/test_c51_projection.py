@@ -18,3 +18,12 @@ def test_categorical_projection_simplex() -> None:
     # Check sum of probabilities equals 1.0 for every sample
     sums = proj.sum(dim=-1).cpu().numpy()
     np.testing.assert_allclose(sums, np.ones(batch_size), atol=1e-5)
+
+
+def test_c51_support_bounds() -> None:
+    net = DuelingC51Network(v_min=-25.0, v_max=10.0, n_atoms=51)
+    support = net.support.cpu().numpy()
+    assert len(support) == 51
+    assert np.isclose(support[0], -25.0)
+    assert np.isclose(support[-1], 10.0)
+    assert np.all(np.diff(support) > 0.0)
