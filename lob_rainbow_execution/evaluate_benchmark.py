@@ -23,6 +23,22 @@ from lob_rainbow_execution.dqn_baseline import DuelingDQNNetwork, DoubleDQNAgent
 from lob_rainbow_execution.rainbow_c51_lob import DuelingC51Network, RainbowC51Agent
 
 
+def calculate_execution_metrics(is_arr: np.ndarray, alpha_cvar: float = 0.05) -> dict[str, float]:
+    """Compute summary execution metrics from array of implementation shortfall bps."""
+    n = len(is_arr)
+    mean_val = float(np.mean(is_arr))
+    std_val = float(np.std(is_arr, ddof=1)) if n > 1 else 0.0
+    sharpe_val = float(mean_val / (std_val + 1e-8))
+    k = max(1, int(np.ceil(alpha_cvar * n)))
+    sorted_vals = np.sort(is_arr)
+    cvar_val = float(np.mean(sorted_vals[:k]))
+    return {
+        "mean_is_bps": mean_val,
+        "std_is_bps": std_val,
+        "sharpe": sharpe_val,
+        "cvar_95_bps": cvar_val,
+    }
+
 def evaluate_policy_on_seeds(
     env: LOBExecutionEnv,
     action_selector: Callable[[np.ndarray], int],
