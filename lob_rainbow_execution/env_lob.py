@@ -1,10 +1,10 @@
 from typing import Any, TypeAlias
-
-Observation: TypeAlias = np.ndarray
-Action: TypeAlias = int
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+
+Observation: TypeAlias = np.ndarray
+Action: TypeAlias = int
 
 
 class LOBExecutionEnv(gym.Env):
