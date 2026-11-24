@@ -39,3 +39,14 @@ def test_order_book_imbalance_bounds() -> None:
     env.ask_vols = np.array([1000.0] * env.num_levels, dtype=np.float32)
     obi = env._compute_obi()
     assert -1.0 <= obi <= -0.99
+
+
+def test_transient_depth_recovery() -> None:
+    env = LOBExecutionEnv()
+    env.reset(seed=2026)
+    # Artificially deplete bid volumes
+    env.bid_vols = np.array([50.0] * env.num_levels, dtype=np.float32)
+    env._generate_lob_step(temporary_impact=0.0)
+    # Verify depth replenishment toward equilibrium
+    assert np.all(env.bid_vols >= 50.0)
+    assert env.validate_invariants()
