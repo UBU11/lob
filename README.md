@@ -40,7 +40,7 @@ The observation vector $s_t$ is dimensionless, stationary, and normalized:
 | :--- | :--- | :--- | :--- | :--- |
 | Remaining Time | $\tau_t$ | $(T - t) / T$ | $[0, 1]$ | Normalized time remaining in liquidation horizon |
 | Remaining Inventory | $I_t$ | $q_t / Q_0$ | $[0, 1]$ | Normalized residual parent order inventory |
-| Spread | $S_t$ | $(P_{\text{ask},1} - P_{\text{bid},1}) / \text{tick\_size}$ | $[1, \infty)$ | Instantaneous top-of-book bid-ask spread in ticks |
+| Spread | $S_t$ | $(P_{\text{ask},1} - P_{\text{bid},1}) / \delta_{\text{tick}}$ | $[1, \infty)$ | Instantaneous top-of-book bid-ask spread in ticks |
 | Order Book Imbalance | $\text{OBI}_t$ | $(\sum V_{\text{bid}} - \sum V_{\text{ask}}) / (\sum V_{\text{bid}} + \sum V_{\text{ask}} + \epsilon)$ | $[-1, 1]$ | Multi-level queue volume imbalance across $D=5$ levels |
 | Depth Ratio | $D_t$ | $V_{\text{bid},1} / (Q_0 / T)$ | $[0, \infty)$ | Ratio of best-bid volume to standard TWAP allocation slice |
 | Mid-Price Drift | $\Delta P_t$ | $((P_{\text{mid},t} - P_{\text{mid},t-1}) / P_0) \times 10^4$ | $(-\infty, \infty)$ | Instantaneous mid-price return in basis points |
@@ -58,7 +58,7 @@ $$M = [0.0, 0.5, 1.0, 1.5, 2.0]$$
 
 ### 3.3 Matching Engine and Microstructure Dynamics
 
-1. **Sequential Book Walking:** A market sell order of volume $x_t$ matches sequentially against resting bid queues $k = 1, \dots, D$. If order volume exceeds visible book depth, residual shares execute at a synthetic penalty level $P_{\text{bid},D} - 3 \cdot \text{tick\_size}$. The volume-weighted execution price is:
+1. **Sequential Book Walking:** A market sell order of volume $x_t$ matches sequentially against resting bid queues $k = 1, \dots, D$. If order volume exceeds visible book depth, residual shares execute at a synthetic penalty level $P_{\text{bid},D} - 3 \cdot \delta_{\text{tick}}$. The volume-weighted execution price is:
    $$\bar{P}_{\text{exec},t} = \frac{\sum_k x_{t,k} P_{\text{bid},k}}{x_t}$$
 2. **Permanent Impact:** Executed volume shifts the mid-price permanently:
    $$P_{\text{mid}}(t+1) = P_{\text{mid}}(t) + \Delta P_{\text{drift}} - \eta \left( \frac{x_t}{Q_0} \right) P_0$$
@@ -70,7 +70,7 @@ $$M = [0.0, 0.5, 1.0, 1.5, 2.0]$$
 
 The reward function measures Implementation Shortfall in basis points relative to arrival price $P_0$, penalized for book walking and terminal inventory spikes:
 
-$$r_t = \frac{x_t}{Q_0} \left( \frac{\bar{P}_{\text{exec},t} - P_0}{P_0} \right) \times 10^4 - \lambda_{\text{walk}} (\text{levels\_walked})^2 - \lambda_{\text{term}} \mathbb{I}(t = T \land x_T > 1.5 x_{\text{TWAP}}) \left(\frac{x_T}{x_{\text{TWAP}}}\right)^2$$
+$$r_t = \frac{x_t}{Q_0} \left( \frac{\bar{P}_{\text{exec},t} - P_0}{P_0} \right) \times 10^4 - \lambda_{\text{walk}} (\text{levels walked})^2 - \lambda_{\text{term}} \mathbb{I}(t = T \land x_T > 1.5 x_{\text{TWAP}}) \left(\frac{x_T}{x_{\text{TWAP}}}\right)^2$$
 
 Coefficients: $\lambda_{\text{walk}} = 0.02$, $\lambda_{\text{term}} = 0.5$.
 
@@ -125,7 +125,7 @@ Policies are benchmarked under a **paired out-of-sample protocol** across 1,000 
 | **TWAP Baseline** | -31.79 | 5.28 | -6.02 | -42.09 |
 | **Standard Double DQN** | -30.87 | 4.82 | -6.40 | -40.98 |
 | **C51 Rainbow (E[Z])** | -11.76 | 8.08 | -1.46 | -27.64 |
-| **C51 Rainbow (CVaR_0.25)** | **-9.26** | **8.15** | **-1.14** | **-26.30** |
+| **C51 Rainbow ($\text{CVaR}_{0.25}$)** | **-9.26** | **8.15** | **-1.14** | **-26.30** |
 
 ### Distribution and Sensitivity Analysis
 

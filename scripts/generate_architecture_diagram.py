@@ -55,7 +55,7 @@ def generate_architecture_figure(output_path: str = "assets/system_architecture.
     act_desc = (
         "Discrete Multipliers: [0.0, 0.5, 1.0, 1.5, 2.0]\n"
         "1. Risk-Neutral: a* = argmax E[Z(s, a)]\n"
-        "2. Risk-Averse: a* = argmax CVaR_0.25(Z)\n"
+        "2. Risk-Averse: a* = argmax CVaR(0.25, Z)\n"
         "Mandatory Terminal Liquidation at t=T"
     )
     ax.text(11.4, 2.2, act_desc, fontsize=9.5, ha="center", va="top")

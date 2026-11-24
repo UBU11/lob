@@ -28,16 +28,16 @@ To make the math concrete before writing code, trace a single decision step at $
 
 ### Step A: Observing the State Vector $s_t$
 
-Suppose at $t=2$, the agent still holds $q_t = 600$ shares. The arrival mid-price at $t=0$ was $P_0 = \$100.00$. The current top-3 Bid levels (since we are **selling** into the bid book) and Ask levels are:
+Suppose at $t=2$, the agent still holds $q_t = 600$ shares. The arrival mid-price at $t=0$ was $P_0 = 100.00\text{ USD}$. The current top-3 Bid levels (since we are **selling** into the bid book) and Ask levels are:
 
-* **Bid Book (Prices / Volumes):** $L_1: (\$99.98, 200\text{ sh})$, $L_2: (\$99.96, 300\text{ sh})$, $L_3: (\$99.93, 500\text{ sh})$
-* **Ask Book (Prices / Volumes):** $L_1: (\$100.02, 100\text{ sh})$, $L_2: (\$100.04, 150\text{ sh})$, $L_3: (\$100.06, 250\text{ sh})$
+* **Bid Book (Prices / Volumes):** Level $L_1$: (99.98 USD, 200 shares), Level $L_2$: (99.96 USD, 300 shares), Level $L_3$: (99.93 USD, 500 shares)
+* **Ask Book (Prices / Volumes):** Level $L_1$: (100.02 USD, 100 shares), Level $L_2$: (100.04 USD, 150 shares), Level $L_3$: (100.06 USD, 250 shares)
 
 We compute the normalized state vector $s_t \in \mathbb{R}^6$:
 
 1. **Remaining Time Fraction ($\tau_t$):** $\frac{T - t}{T} = \frac{5 - 2}{5} = 0.60$
 2. **Remaining Inventory Fraction ($I_t$):** $\frac{q_t}{Q_0} = \frac{600}{1000} = 0.60$
-3. **Spread in Ticks ($S_t$):** $\frac{P_{\text{ask},1} - P_{\text{bid},1}}{\text{tick\_size}} = \frac{100.02 - 99.98}{0.01} = 4.0\text{ ticks}$
+3. **Spread in Ticks ($S_t$):** $\frac{P_{\text{ask},1} - P_{\text{bid},1}}{\delta_{\text{tick}}} = \frac{100.02 - 99.98}{0.01} = 4.0\text{ ticks}$
 4. **Order Book Imbalance ($OBI_t$):**
 
 $$OBI_t = \frac{\sum_{k=1}^3 V_{\text{bid},k} - \sum_{k=1}^3 V_{\text{ask},k}}{\sum_{k=1}^3 V_{\text{bid},k} + \sum_{k=1}^3 V_{\text{ask},k}} = \frac{1000 - 500}{1000 + 500} = +0.333$$
@@ -46,7 +46,7 @@ $$OBI_t = \frac{\sum_{k=1}^3 V_{\text{bid},k} - \sum_{k=1}^3 V_{\text{ask},k}}{\
 
 *(A positive imbalance indicates strong buying pressure supporting the bid—favorable for selling).*
 5. **Book Depth Ratio ($D_t$):** Ratio of top-level bid volume to average slice size $\frac{V_{\text{bid},1}}{Q_0 / T} = \frac{200}{200} = 1.0$.
-6. **Short-Term Mid-Price Drift ($\Delta P_t$):** $\frac{P_{\text{mid},t} - P_{\text{mid},t-1}}{\text{tick\_size}} = \frac{100.00 - 100.01}{0.01} = -1.0$.
+6. **Short-Term Mid-Price Drift ($\Delta P_t$):** $\frac{P_{\text{mid},t} - P_{\text{mid},t-1}}{\delta_{\text{tick}}} = \frac{100.00 - 100.01}{0.01} = -1.0$.
 
 Thus, the input tensor fed into the network is `s_t = [0.60, 0.60, 4.0, 0.333, 1.0, -1.0]`.
 
@@ -56,12 +56,12 @@ Suppose our discrete action space $A = \{0, 1, 2, 3, 4\}$ maps to selling $\{0\%
 
 * The agent picks action $a_t = 3$, meaning **sell $1.5 \times 200 = 300$ shares immediately via Market Order**.
 * **Order Matching:**
-* First $200$ shares match against Bid $L_1$ at $\$99.98$ (depleting $L_1$ completely).
-* Remaining $100$ shares walk the book to Bid $L_2$ and match at $\$99.96$.
+* First 200 shares match against Bid level $L_1$ at 99.98 USD (depleting $L_1$ completely).
+* Remaining 100 shares walk the book to Bid level $L_2$ and match at 99.96 USD.
 
 
 * **Average Execution Price ($\bar{P}_{\text{exec}}$):** $\frac{200(99.98) + 100(99.96)}{300} = \$99.9733$.
-* **Step Implementation Shortfall Reward ($r_t$):** Measured in basis points (bps) relative to the arrival mid-price $P_0 = \$100.00$, minus a quadratic trade-through penalty $\alpha$ for walking past $L_1$:
+* **Step Implementation Shortfall Reward ($r_t$):** Measured in basis points (bps) relative to the arrival mid-price $P_0 = 100.00\text{ USD}$, minus a quadratic trade-through penalty $\alpha$ for walking past level $L_1$:
 
 $$r_t = \frac{x_t}{Q_0} \cdot \left(\frac{\bar{P}_{\text{exec}} - P_0}{P_0}\right) \times 10^4 - \alpha \cdot (\text{levels walked})^2$$
 
@@ -86,7 +86,7 @@ $$\hat{\mathcal{T}} z_j = \text{clip}(r_t + \gamma z_j, V_{\min}, V_{\max}) = \t
 * Atom $u=39$ ($-0.5\text{ bps}$) receives $p_j \times (38.298 - 38) = 0.298 p_j$.
 
 
-4. **KL-Divergence Loss & PER Priority:** Compute the cross-entropy loss $D_{\text{KL}}(\Phi \hat{\mathcal{T}} Z(s_{t+1}, a^*) \parallel Z(s_t, a_t))$ and use this exact scalar KL loss as the transition priority $p_i = (\text{KL\_Loss} + \epsilon)^\alpha$ in the SumTree replay buffer.
+4. **KL-Divergence Loss & PER Priority:** Compute the cross-entropy loss $D_{\text{KL}}(\Phi \hat{\mathcal{T}} Z(s_{t+1}, a^*) \parallel Z(s_t, a_t))$ and use this exact scalar KL loss as the transition priority $p_i = (\mathcal{L}_{\text{KL}} + \epsilon)^\alpha$ in the SumTree replay buffer.
 
 ---
 

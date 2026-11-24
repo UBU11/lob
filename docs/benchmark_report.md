@@ -13,7 +13,7 @@
 | **TWAP Baseline** | -31.79 | 5.28 | -6.02 | -42.09 |
 | **Standard Double DQN** | -30.87 | 4.82 | -6.40 | -40.98 |
 | **C51 Rainbow (E[Z])** | -11.76 | 8.08 | -1.46 | -27.64 |
-| **C51 Rainbow (CVaR_0.25)** | -9.26 | 8.15 | -1.14 | -26.30 |
+| **C51 Rainbow ($\text{CVaR}_{0.25}$)** | -9.26 | 8.15 | -1.14 | -26.30 |
 
 ## Key Empirical Findings
 1. **Distributional Superiority:** C51 Rainbow agents reduce mean Implementation Shortfall from -31.79 bps (TWAP) to -9.26 bps, achieving a 22.53 bps improvement in realized execution price.

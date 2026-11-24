@@ -26,14 +26,14 @@ def generate_trajectories(output_path: str = "assets/execution_trajectories.png"
         "TWAP Baseline": lambda obs: 2,
         "Double DQN": lambda obs: int(torch.argmax(dqn_net(torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)), dim=-1).item()),
         "C51 Rainbow (E[Z])": lambda obs: c51_net.get_action(torch.as_tensor(obs, dtype=torch.float32), mode="expected"),
-        "C51 Rainbow (CVaR_0.25)": lambda obs: c51_net.get_action(torch.as_tensor(obs, dtype=torch.float32), mode="cvar", alpha=0.25),
+        "C51 Rainbow (CVaR 0.25)": lambda obs: c51_net.get_action(torch.as_tensor(obs, dtype=torch.float32), mode="cvar", alpha=0.25),
     }
 
     colors = {
         "TWAP Baseline": "#7f7f7f",
         "Double DQN": "#1f77b4",
         "C51 Rainbow (E[Z])": "#ff7f0e",
-        "C51 Rainbow (CVaR_0.25)": "#2ca02c",
+        "C51 Rainbow (CVaR 0.25)": "#2ca02c",
     }
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), dpi=300)

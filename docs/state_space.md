@@ -11,7 +11,7 @@ The observation vector $s_t \in \mathbb{R}^6$ represents a dimensionless, statio
    Tracks remaining inventory normalized by parent order size $Q_0$.
 
 3. Bid-Ask Spread in Ticks ($S_t$):
-   $$S_t = \frac{P_{\text{ask},1}(t) - P_{\text{bid},1}(t)}{\text{tick\_size}}$$
+   $$S_t = \frac{P_{\text{ask},1}(t) - P_{\text{bid},1}(t)}{\delta_{\text{tick}}}$$
    Measures instantaneous execution cost and liquidity friction at the top of the book.
 
 4. Multi-Level Order Book Imbalance ($\text{OBI}_t$):

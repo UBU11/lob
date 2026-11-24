@@ -119,7 +119,7 @@ def plot_benchmark_distributions(
         "TWAP Baseline": "#7f7f7f",
         "Standard Double DQN": "#1f77b4",
         "C51 Rainbow (E[Z])": "#ff7f0e",
-        "C51 Rainbow (CVaR_0.25)": "#2ca02c",
+        "C51 Rainbow (CVaR 0.25)": "#2ca02c",
     }
 
     for name, m in results.items():
@@ -224,7 +224,7 @@ def run_paired_benchmark(
         "TWAP Baseline": twap_results,
         "Standard Double DQN": dqn_results,
         "C51 Rainbow (E[Z])": c51_expected_results,
-        "C51 Rainbow (CVaR_0.25)": c51_cvar_results,
+        "C51 Rainbow (CVaR 0.25)": c51_cvar_results,
     }
 
     markdown_table = format_markdown_table(results)

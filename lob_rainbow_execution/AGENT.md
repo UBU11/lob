@@ -62,7 +62,7 @@ All observations MUST be dimensionless, normalized, and stationary across price 
 
 1. `time_rem`: $\frac{T - t}{T} \in [0, 1]$ (fraction of horizon remaining).
 2. `inv_rem`: $\frac{q_t}{Q_0} \in [0, 1]$ (fraction of parent order remaining).
-3. `spread_ticks`: $\frac{P_{\text{ask},1}(t) - P_{\text{bid},1}(t)}{\text{tick\_size}}$ (current bid-ask spread in ticks).
+3. `spread_ticks`: $\frac{P_{\text{ask},1}(t) - P_{\text{bid},1}(t)}{\delta_{\text{tick}}}$ (current bid-ask spread in ticks).
 4. `obi`: Multi-level Order Book Imbalance across $D$ visible levels:
 
 $$\text{OBI}_t = \frac{\sum_{k=1}^D V_{\text{bid},k}(t) - \sum_{k=1}^D V_{\text{ask},k}(t)}{\sum_{k=1}^D V_{\text{bid},k}(t) + \sum_{k=1}^D V_{\text{ask},k}(t) + \epsilon} \in [-1, 1]$$
@@ -81,7 +81,7 @@ Following recent 2026 execution stabilization findings, parameterize actions rel
 
 ### 4.3 Order Matching, Book Walking & Transient Impact
 
-* **Walking the Book:** A market sell order $x_t$ matches sequentially against Bid levels $k = 1 \dots D$ ($P_{\text{bid},1} > P_{\text{bid},2} > \dots > P_{\text{bid},D}$), depleting available queue volume $V_{\text{bid},k}(t)$ at each level. If $x_t > \sum_{k=1}^D V_{\text{bid},k}(t)$, fill the overflow at $P_{\text{bid},D} - 3 \cdot \text{tick\_size}$ and record additional levels walked.
+* **Walking the Book:** A market sell order $x_t$ matches sequentially against Bid levels $k = 1 \dots D$ ($P_{\text{bid},1} > P_{\text{bid},2} > \dots > P_{\text{bid},D}$), depleting available queue volume $V_{\text{bid},k}(t)$ at each level. If $x_t > \sum_{k=1}^D V_{\text{bid},k}(t)$, fill the overflow at $P_{\text{bid},D} - 3 \cdot \delta_{\text{tick}}$ and record additional levels walked.
 * **Transient Resilience & Permanent Impact:** Static LOB replay without replenishment allows RL agents to exploit unrealistic book states. After each step, apply permanent mid-price impact proportional to executed volume and exponential depth replenishment ($\approx 60\%$ recovery per step toward stochastic Gamma-distributed queue depth).
 
 ### 4.4 Reward Function (Implementation Shortfall in Basis Points)
@@ -89,7 +89,7 @@ Following recent 2026 execution stabilization findings, parameterize actions rel
 Define step reward $r_t$ directly in **basis points (bps)** relative to the arrival mid-price $P_0$:
 
 
-$$r_t = \frac{x_t}{Q_0} \left( \frac{\bar{P}_{\text{exec},t} - P_0}{P_0} \right) \times 10^4 - \lambda_{\text{walk}} (\text{levels\_walked})^2 - \lambda_{\text{term}} \mathbb{I}(t = T \land x_T > 1.5 x_{\text{TWAP}}) \left(\frac{x_T}{x_{\text{TWAP}}}\right)^2$$
+$$r_t = \frac{x_t}{Q_0} \left( \frac{\bar{P}_{\text{exec},t} - P_0}{P_0} \right) \times 10^4 - \lambda_{\text{walk}} (\text{levels walked})^2 - \lambda_{\text{term}} \mathbb{I}(t = T \land x_T > 1.5 x_{\text{TWAP}}) \left(\frac{x_T}{x_{\text{TWAP}}}\right)^2$$
 
 * Note: $\sum_{t=1}^T r_t$ equals the total episodic **Implementation Shortfall (bps)** minus quadratic microstructure slippage penalties.
 
